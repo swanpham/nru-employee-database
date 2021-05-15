@@ -1,4 +1,4 @@
-# NRU-Employee-Database
+# NRU-Employees-Database
 
 ## AS A Business Owner
 
