@@ -4,12 +4,16 @@ const app = express();
 
 const PORT = process.env.PORT || 3001;
 
-const sequelize = require ('./config/connection');
+const db = require ('./config/connection');
 
 const run = require ('./src/app');
 
-sequelize.sync ({ force: false}).then (() => {
-    app.listen (PORT, () => console.log ('listening'))
-    run()
-})
 
+db.connect (err => {
+    if (err) throw err
+    console.log ('connected')
+    app.listen(PORT, () => {
+        console.log (`server run on port ${PORT} `);
+        run()
+    })
+})
