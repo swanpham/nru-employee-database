@@ -4,7 +4,7 @@ const db = require ('../config/connection');
 
 const table = require ('console.table');
 
-function app () {
+function app () {    
     return inquirer.prompt ([
         {
             type: 'list',
@@ -18,19 +18,17 @@ function app () {
                 'Add employees',
                 'Add roles',
                 'Update employee managers',
-                'Update employees roles',     
+                'Update role',     
                 'Delete an employee',    
                 'Delete a role',    
                 'Delete a department',
                 'View by department',
                 'View department budget',
-                'View emplyees by manager'
-
-
+                'View employees by manager'
             ]
         }
-    ]).then (res => {
-        switch (res.select) {
+    ]).then(res => {
+        switch(res.select) {
             case 'View all departments': 
                 allDepartment()
                 break             
@@ -55,23 +53,23 @@ function app () {
             case 'Update employee managers':
                 updateManager()
                 break
-            case 'delete an employee':
+            case 'Delete an employee':
                 deleteEmployee()
                 break
-            case 'delete a role':
+            case 'Delete a role':
                 deleteRole()
                 break
-            case 'delete a department':
+            case 'Delete a department':
                 deleteDepartment()
             break
-            case 'view by department':
+            case 'View by department':
                 viewByDepartment()
                 break
             case 'View department budget':
                 viewBudget()
                 break
-            case 'View emplyees by manager':
-                viewManagers()()
+            case 'View employees by manager':
+                viewManagers()
                 break
         }        
     });
@@ -79,7 +77,7 @@ function app () {
 
 // view all departments
 function allDepartment () {
-    db.promise ().query (`SELECT * FROM departments ORDER BY departments.id`)
+    db.promise().query (`SELECT * FROM departments ORDER BY departments.id`)
     .then (([rows]) => {
         console.table (rows);
         app()
@@ -95,24 +93,25 @@ function allEmployee () {
         employees.first_name,
         employees.last_name,
         roles.title,
+        roles.salary,
         managers.first_name AS manager_first_name,
-        managers.last_name AS manager_last_name,
+        managers.last_name AS manager_last_name
         FROM employees
-        LEFT JOIN employees
-        ON employees.manager_id = manager.id
+        LEFT JOIN employees AS managers
+        ON employees.manager_id = managers.id
         LEFT JOIN roles
-        ON employees.role_id = roles.id;`)
-    .then (([rows]) => {
-        console.table (rows);
+        ON employees.roles_id = roles.id;`)
+    .then(([rows]) => {
+        console.table(rows);
         app()
     })
     .catch(error => {
-        console.log (error);
+        console.log(error);
     })
 }
 
 // view all roles
-function allRole () {
+function allRole() {
     db.promise().query (`SELECT roles.id,
         roles.title AS job_title, 
         departments.name AS departments_name,
@@ -123,7 +122,7 @@ function allRole () {
         GROUP BY roles.id
         ORDER BY roles.id;`)
 
-    .then (([rows]) => {
+    .then(([rows]) => {
         console.table (rows);
         app()
     })
@@ -141,7 +140,7 @@ function newDepartment() {
             message: "name of the department to add?",
         }
     ])
-    .then ( response => {
+    .then( response => {
         const res = response.department
         db.promise().query(`INSERT INTO departments (name) VALUES (?)`, [ res ])
         .then( ( [ rows ]) => {
@@ -160,23 +159,19 @@ function newDepartment() {
 
 // add new role
 function newRole() {
-    db.promise().query(`SELECT * FROM departments ORDER BY id;`)
+    db.promise().query(`SELECT departments.id AS department_id, departments.name AS departments_name FROM departments ORDER BY id;`)
     .then( ( [ rows ]) => {
         console.table( rows )
 
         // inquirer questioning
         return inquirer.prompt ( [
-            {
-                type: 'text',
-                name: "role",
-                message: "What role would you like to add?",
-            },
+            
             {
                 type: 'text',
                 name: 'department',
                 message: "Enter id of department?",
                 validate: input => {
-                    if(!input === NaN || input > 0 && input <= rows.length + 1 ) {
+                    if(!input === NaN || input > 0 ) {
                         return true
                     } else {
                         console.log ( ' Enter a department!' )
@@ -186,12 +181,17 @@ function newRole() {
             },
             {
                 type: 'text',
+                name: "role",
+                message: "What role would you like to add?",
+            },
+            {
+                type: 'text',
                 name: "salary",
                 message: "What is the salary?",
             }   
         ])
     })    
-    .then ( data => {
+    .then( data => {
         db.promise().query ( `INSERT INTO roles ( title, salary, departments_id) VALUES (?,?,?)`, [data.role, data.salary, data.department] )
         .then( () => {
             console.log (`${data.role} added to ${data.department} department`);
@@ -208,12 +208,20 @@ function newRole() {
 
 // add new employees
 function newEmployee() {
-    db.promise().query(`SELECT * FROM roles ORDER BY id;`)
+    db.promise().query(`SELECT roles.id,
+                                roles.title AS job_title, 
+                                departments.name AS departments_name,
+                                roles.salary
+                                FROM roles
+                                LEFT JOIN departments
+                                ON roles.departments_id = departments.id
+                                GROUP BY roles.id
+                                ORDER BY roles.id;`)
     .then( ( [ rows ]) => {
         console.table( rows )
 
         // inquirer questioning
-        return inquirer.prompt ( [
+        return inquirer.prompt( [
             {
                 type: 'text',
                 name: "first_name",
@@ -229,7 +237,7 @@ function newEmployee() {
                 name: 'role',
                 message: "Enter id of role from list",
                 validate: input => {
-                    if(!input === NaN || input > 0 && input <= rows.length + 1 ) {
+                    if(!input === NaN || input > 0 ) {
                         return true
                     } else {
                         console.log ( ' Enter a role id from list' )
@@ -244,7 +252,7 @@ function newEmployee() {
             }   
         ])
     })    
-    .then ( data => {
+    .then( data => {
         let manager = data.manager === '' ? null : data.manager
 
         db.promise().query ( `INSERT INTO employees ( first_name, last_name, roles_id, manager_id) VALUES (?,?,?,?)`, [ data.first_name, data.last_name, data.role, manager ] )
@@ -261,9 +269,9 @@ function newEmployee() {
     });
 };
 
-// update employee role
+// update role
 function updateRole() {
-    db.promise().querry(`SELECT * FROM emplyees ORDER BY id;`)
+    db.promise().query(`SELECT * FROM employees ORDER BY id;`)
     .then( ( [ rows ] ) => {
         console.table (rows) 
         return inquirer.prompt ( [
@@ -272,7 +280,7 @@ function updateRole() {
                 name: 'employee',
                 message: "Enter id of emplyee to update",
                 validate: input => {
-                    if(!input === NaN || input > 0 && input <= rows.length + 1 ) {
+                    if(!input === NaN || input > 0 ) {
                         return true
                     } else {
                         console.log ( ' Enter employee id' )
@@ -285,7 +293,7 @@ function updateRole() {
     .then( data => {
         const employee = data.employee
         db.promise().query(`SELECT * FROM roles ORDER BY id;`)
-        .then (([ rows ])=> {
+        .then(([ rows ])=> {
             console.table (rows)
 
             // inquirer questioning
@@ -295,7 +303,7 @@ function updateRole() {
                     name: 'role',
                     message: "Enter id of new role",
                     validate: input => {
-                        if(!input === NaN || input > 0 && input <= rows.length + 1 ) {
+                        if(!input === NaN || input > 0 ) {
                             return true
                         } else {
                             console.log ( ' Enter a role id' )
@@ -307,8 +315,8 @@ function updateRole() {
         })
         .then(data => {
             const role = data.role
-            db.promise().query(`UPDATE employees SET role_id = ? WHERE id = ?`, [ role, employee ])
-                .then ( ( [ rows ] ) => {
+            db.promise().query(`UPDATE employees SET roles_id = ? WHERE id = ?`, [ role, employee ])
+                .then( ( [ rows ] ) => {
                     // display confirmation
                     console.log('role updated')
                     // return to menu
@@ -328,7 +336,7 @@ function updateRole() {
 };
 
 // update manager
-function updateManager () {
+function updateManager() {
     let list
     db.promise().query(`SELECT employees.id, employees.first_name, employees.last_name FROM employees ORDER BY id;`)
         .then( ( [ rows ] ) => {
@@ -340,7 +348,7 @@ function updateManager () {
                     name: 'employee',
                     message: "Enter id of employee to update",
                     validate: input => {
-                        if(!input === NaN || input > 0 && input <= rows.length + 1 ) {
+                        if(!input === NaN || input > 0 ) {
                             return true
                         } else {
                             console.log ( ' Enter a role id from list' )
@@ -359,7 +367,7 @@ function updateManager () {
                     name: 'manager',
                     message: "Enter id of employee to set as manager",
                     validate: input => {
-                        if(!input === NaN || input > 0 && input <= rows.length + 1 ) {
+                        if(!input === NaN || input > 0 ) {
                             return true
                         } else {
                             console.log ( ' Enter an employee id!' )
@@ -394,7 +402,7 @@ function updateManager () {
 function deleteEmployee(){
     db.promise().query(`SELECT id,
                                 first_name,
-                                last_name,
+                                last_name
                                 FROM employees
                                 ORDER BY id;`)
     .then(([ rows ])=> {
@@ -405,7 +413,7 @@ function deleteEmployee(){
                 name: 'employee',
                 message: "Choose id of employee to delete",
                 validate: input => {
-                    if(!input === NaN || input > 0 && input <= rows.length + 1 ) {
+                    if(!input === NaN || input > 0 ) {
                         return true
                     } else {
                         console.log ( ' Enter an employee id to delete!' )
@@ -417,6 +425,7 @@ function deleteEmployee(){
         ])
     })  
     .then(data => {
+        console.log (data.employee);
         db.promise().query(`DELETE FROM employees WHERE id = ?;`, [data.employee])
         .then(()=> {
             console.log ( 'employee deleted');
@@ -442,7 +451,7 @@ function deleteRole() {
                 name: 'role',
                 message: "Choose id of role to delete",
                 validate: input => {
-                    if(!input === NaN || input > 0 && input <= rows.length + 1 ) {
+                    if(!input === NaN || input > 0 ) {
                         return true
                     } else {
                         console.log ( ' Enter an employee id to delete!' )
@@ -476,10 +485,10 @@ function deleteDepartment() {
         return inquirer.prompt( [
             {
                 type: 'text',
-                name: 'deaprtment',
-                message: "Choose id of deaprtment to delete",
+                name: 'department',
+                message: "Choose id of department to delete",
                 validate: input => {
-                    if(!input === NaN || input > 0 && input <= rows.length + 1 ) {
+                    if(!input === NaN || input > 0 ) {
                         return true
                     } else {
                         console.log ( ' Enter a department id to delete!' )
@@ -491,6 +500,7 @@ function deleteDepartment() {
         ])
     })  
     .then(data => {
+       
         db.promise().query(`DELETE FROM departments WHERE id = ?;`, [data.department])
         .then( () => {
             console.log ( 'department deleted');
@@ -513,10 +523,10 @@ function viewByDepartment() {
         return inquirer.prompt( [
             {
                 type: 'text',
-                name: 'deaprtment',
+                name: 'department',
                 message: "Choose id of department to view",
                 validate: input => {
-                    if(!input === NaN || input > 0 && input <= rows.length + 1 ) {
+                    if(!input === NaN || input > 0 ) {
                         return true
                     } else {
                         console.log ( ' Enter a department id to view!' )
@@ -534,9 +544,9 @@ function viewByDepartment() {
                                    roles.title AS job_title
                                    FROM employees
                                    LEFT JOIN roles
-                                   ON employees.role_id = roles.id
+                                   ON employees.roles_id = roles.id
                                    LEFT JOIN departments
-                                   ON roles.department_id = departments.id
+                                   ON roles.departments_id = departments.id
                                    WHERE departments.id = ?;`, [ data.department ])
         .then( ( [ rows ] ) => {
             console.table ( rows )
@@ -557,12 +567,12 @@ function viewBudget() {
                                SUM(roles.salary) AS salary
                                FROM employees
                                LEFT JOIN roles
-                               ON employees.role_id = roles.id
+                               ON employees.roles_id = roles.id
                                LEFT JOIN departments
                                ON roles.departments_id = departments.id
                                GROUP BY departments.id
                                ORDER BY departments.id;`)
-    .then ( ( [ rows ] ) => {
+    .then( ( [ rows ] ) => {
         console.table( rows )
         app();        
     })
@@ -590,7 +600,7 @@ function viewManagers() {
                 name: 'manager',
                 message: "Select id of manager to view",
                 validate: input => {
-                    if(!input === NaN || input > 0 && input <= rows.length + 1 ) {
+                    if(!input === NaN || input > 0 ) {
                         return true
                     } else {
                         console.log ( ' Enter a manager id to view!' )
@@ -601,7 +611,7 @@ function viewManagers() {
 
         ])
     })
-    .then ( data => {
+    .then( data => {
         db.promise().query(`SELECT employees.id,
                                    employees.first_name,
                                    employees.last_name,
@@ -610,9 +620,9 @@ function viewManagers() {
                                    LEFT JOIN employees AS managers
                                    ON employees.manager_id = managers.id
                                    LEFT JOIN roles
-                                   ON employees.role_id = roles.id
+                                   ON employees.roles_id = roles.id
                                    WHERE employees.manager_id = ?;`, [ data.manager])
-        .then ( ( [ rows ] ) => {
+        .then( ( [ rows ] ) => {
             console.table(rows)
             app();        
         })
