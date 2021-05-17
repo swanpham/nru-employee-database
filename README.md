@@ -49,12 +49,3 @@
 
  * This project is not open for contribution
  
-## Tests
-
-  
-## Built With
-- Javascript
-- Node.js
-- Express.js
-
-
