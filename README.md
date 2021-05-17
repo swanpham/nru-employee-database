@@ -19,9 +19,9 @@
     * [Inquirer](https://www.npmjs.com/package/inquirer) npm package will be installed along with its own dependencies
   * To install console.table
     * [console.table](https://www.npmjs.com/package/console.table) npm package will be installed along with its own dependencies
-  * To install dev dependencies, execite npm install --dev
-    * [Jest](https://jestjs.io/) npm package will be installed along with its own dependencies
-    
+  * To install Express.js
+    * [Express.js](http://expressjs.com/) npm package will be installed along with its own dependencies
+      
 ## Usage
 
 * GIVEN a command-line application that accepts user input
